@@ -1,0 +1,18 @@
+This is a simple demo of a hot-swappable library.
+
+It uses the dynamic linking library.
+
+Demo:
+'make' to compile the binary and the library
+'make reload' to switch the library with another code
+
+While executing the binary:
+'print' to print what the library has to print
+'exit' to exit the process
+'reload' to reload the new library, do it after 'make reload'
+
+Et voilà, you've just loaded a brand new library without exiting your process.
+
+This is a simple demo, but I may update it in the future just for fun and
+non-profit. I'm thinking about linked lists to make it more generic and
+scalable.
