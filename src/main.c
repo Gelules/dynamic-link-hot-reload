@@ -5,20 +5,34 @@
 
 typedef void (*fun_test_hello_world)(void);
 
-int reload_hello_world(const char *lib_path, const char *symbol, void **lib_test, fun_test_hello_world *fun_hello_world)
+enum dlsym_type
 {
-    dlclose(*lib_test);
+    LOAD,
+    RELOAD
+};
+
+int load_hello_world(const char *lib_path, const char *symbol, void **lib_test, fun_test_hello_world *fun_hello_world, enum dlsym_type type)
+{
+    if (type == RELOAD)
+    {
+        if (dlclose(*lib_test) != 0)
+        {
+            fprintf(stderr, "dlclose: %s\n", dlerror());
+            return -1;
+        }
+    }
+
     *lib_test = dlopen(lib_path, RTLD_NOW);
     if (*lib_test == NULL)
     {
-        fprintf(stderr, "%s\n", dlerror());
+        fprintf(stderr, "dlopen: %s\n", dlerror());
         return -1;
     }
 
     *fun_hello_world = (void (*)(void))(intptr_t) dlsym(*lib_test, symbol);
     if (*fun_hello_world == NULL)
     {
-        fprintf(stderr, "Cannot load %s symbol\n", symbol);
+        fprintf(stderr, "dlsym: Cannot load %s symbol - %s\n", symbol, dlerror());
         return -1;
     }
 
@@ -27,26 +41,20 @@ int reload_hello_world(const char *lib_path, const char *symbol, void **lib_test
 
 int main(void)
 {
-    int reload = 0;
+    int load = 0;
+    enum dlsym_type type = LOAD;
     char command[4096] = { 0 };
     size_t command_len = 0;
     const char *lib_path = "./libtest.so";
     const char *symbol = "hello_world";
     fun_test_hello_world fun_hello_world = NULL;
-    void *lib_test = dlopen(lib_path, RTLD_NOW);
+    void *lib_test = NULL;
 
-    if (lib_test == NULL)
-    {
-        fprintf(stderr, "%s\n", dlerror());
+    load = load_hello_world(lib_path, symbol, &lib_test, &fun_hello_world, type);
+    if (load != 0)
         return 1;
-    }
 
-    fun_hello_world = (void (*)(void))(intptr_t) dlsym(lib_test, symbol);
-    if (fun_hello_world == NULL)
-    {
-        fprintf(stderr, "Cannot load %s symbol\n", symbol);
-        return 1;
-    }
+    type = RELOAD;
 
     while (1)
     {
@@ -62,21 +70,16 @@ int main(void)
         }
         else if (!strcmp(command, "reload"))
         {
-            reload = reload_hello_world(lib_path, symbol, &lib_test, &fun_hello_world);
-            if (reload != 0)
-            {
-                fprintf(stderr, "error; %d - %s\n", reload, dlerror());
+            load = load_hello_world(lib_path, symbol, &lib_test, &fun_hello_world, type);
+            if (load != 0)
                 return 2;
-            }
         }
         else if (!strcmp(command, "exit"))
-        {
             break;
-        }
+        else if (command[0] == '\0')
+            continue;
         else
-        {
             fprintf(stderr, "Command not implemented\n");
-        }
     }
 
     dlclose(lib_test);
